@@ -79,7 +79,7 @@ Encode, decode, and inspect 128-bit UUID/ULID values, exactly like `key32`/`key6
 import (
   "fmt"
 
-"github.com/google/uuid"
+  "github.com/google/uuid"
   "github.com/oklog/ulid/v2"
   "github.com/sean-/go-sharded-cluster-keys/keyuuid"
 )
