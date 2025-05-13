@@ -43,7 +43,7 @@ const valueBits = 32
 type encoder struct {
 	offset    int // number of low bits to leave untouched
 	size      int // size of the “shard” segment
-	hexDigits int
+	hexDigits int // number of hex nibbles in the prefix
 }
 
 // NewEncoder constructs an Encoder that will extract `size` bits

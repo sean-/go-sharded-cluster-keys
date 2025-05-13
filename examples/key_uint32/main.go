@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"sort"
 	"strings"
@@ -10,21 +11,24 @@ import (
 	"github.com/sean-/go-sharded-cluster-keys/key32"
 )
 
-func main() {
-	const maskOffset, maskSize = 11, 13
+const maskOffset, maskSize = 11, 13
 
-	// build, dedupe, sort
-	values := uniqueSorted(exampleSeqValues())
+func main() {
+	fmt.Printf("mask offset:\t%d\n", maskOffset)
+	fmt.Printf("mask size:\t%d\n", maskSize)
+
+	// demo values (deduped & sorted)
+	values := uniqueSorted(exampleValues())
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.AlignRight)
 	defer w.Flush()
 	fmt.Fprintln(w, strings.Join([]string{
 		"orig(dec)",
-		"orig(bin)",
 		"orig(hex)",
+		"orig(bin)",
 
-		"enc(bin)",
 		"enc(hex)",
+		"enc(bin)",
 
 		"prefix(hex)",
 		"prefix(bin)",
@@ -33,6 +37,7 @@ func main() {
 
 	enc := key32.NewEncoder(maskOffset, maskSize)
 	hexDigits := enc.PrefixHexSize()
+	fmt.Printf("hex nibbles:\t%d\n", hexDigits)
 	for _, v := range values {
 		orig := uint32(v)
 		encoded := enc.Encode(orig)
@@ -42,25 +47,38 @@ func main() {
 		}
 		prefix := enc.Prefix(encoded)
 
-		fmt.Fprintf(w, "%d\t", orig)
-		fmt.Fprintf(w, "%032b\t", orig)
+		fmt.Fprintf(w, "%10d\t", orig)
 		fmt.Fprintf(w, "%08x\t", orig)
+		fmt.Fprintf(w, "%032b\t", orig)
 
-		fmt.Fprintf(w, "%032b\t", uint32(encoded))
 		fmt.Fprintf(w, "%08x\t", uint32(encoded))
+		fmt.Fprintf(w, "%032b\t", uint32(encoded))
 
 		fmt.Fprintf(w, "%0*x\t", hexDigits, enc.PrefixHexPad(prefix))
-		fmt.Fprintf(w, "%0*b\t\n", enc.EncodedBits(), prefix)
+		fmt.Fprintf(w, "%0*b\t", enc.PrefixSize(), prefix)
+		fmt.Fprintln(w)
 	}
 }
 
-func exampleSeqValues() []uint64 {
+func exampleValues() []uint64 {
 	seq := []uint64{
-		0, 1, 2, 3, 4, 127, 128, 129, 255, 256,
-		1023, 1024, 2047, 2048, 2049, 4095, 4096, 4097,
-		4292870144,
+		0, 1, 2, 3, 4, 127, 128, 129, 255, 256, 1023, 1024,
+		(1 << maskOffset) + -1,
+		(1 << maskOffset) + 0,
+		(1 << maskOffset) + 1,
+
+		(2 << maskOffset) + -1,
+		(2 << maskOffset) + 0,
+		(2 << maskOffset) + 1,
+
+		(math.MaxUint32 - (1 << maskOffset)) + -1,
+		(math.MaxUint32 - (1 << maskOffset)) + 0,
+		(math.MaxUint32 - (1 << maskOffset)) + 1,
+
+		math.MaxUint32 + -1,
+		math.MaxUint32 + 0,
 	}
-	const shiftBy = 11
+	const shiftBy = maskOffset
 	for i := uint64(2); i < 33; i++ {
 		seq = append(seq, (i<<shiftBy)-1, i<<shiftBy, (i<<shiftBy)+1)
 	}
