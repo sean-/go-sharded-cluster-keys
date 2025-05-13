@@ -73,18 +73,13 @@ prefix64  := enc64.Prefix(encoded64)
 
 ### `keyuuid`
 
-Wrap, validate, and interoperate with UUIDs, UUIDv7, and ULID.
-
-```go
-### `keyuuid`
-
 Encode, decode, and inspect 128-bit UUID/ULID values, exactly like `key32`/`key64`.
 
 ```go
 import (
   "fmt"
 
-"github.com/google/uuid"
+  "github.com/google/uuid"
   "github.com/oklog/ulid/v2"
   "github.com/sean-/go-sharded-cluster-keys/keyuuid"
 )

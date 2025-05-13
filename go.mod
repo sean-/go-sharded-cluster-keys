@@ -1,6 +1,6 @@
-module github.com/sean-/go-sharded-cluster-key
+module github.com/sean-/go-sharded-cluster-keys
 
-go 1.24.2
+go 1.23.7
 
 require (
 	github.com/google/uuid v1.6.0
