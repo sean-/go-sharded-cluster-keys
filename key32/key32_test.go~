@@ -1,0 +1,106 @@
+package key32
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestShardKey32_TableDriven(t *testing.T) {
+	tests := []struct {
+		name                        string
+		orig                        ShardKey32
+		offset, size                int
+		wantShard, wantMSB, wantLSB uint32
+		wantEnc                     uint32
+	}{
+		{
+			name:      "simple-8bit",
+			orig:      ShardKey32(0x12345678),
+			offset:    8,
+			size:      8,
+			wantShard: 0x6A,
+			wantMSB:   0x1234,
+			wantLSB:   0x78,
+			// maskBits=0x56, reversed=0x6A, so encoded=0x6A123478
+			wantEnc: 0x6A123478,
+		},
+		{
+			name:      "zero",
+			orig:      ShardKey32(0x00000000),
+			offset:    5,
+			size:      4,
+			wantShard: 0x0,
+			wantMSB:   0x0,
+			wantLSB:   0x0,
+			wantEnc:   0x00000000,
+		},
+		{
+			name:      "fullMask-16bit",
+			orig:      ShardKey32(0xFFFFFFFF),
+			offset:    16,
+			size:      16,
+			wantShard: 0xFFFF,
+			wantMSB:   0x0000,
+			wantLSB:   0xFFFF,
+			// reversed(0xFFFF,16) = 0xFFFF, so enc = 0xFFFF0000 | 0xFFFF = 0xFFFFFFFF
+			wantEnc: 0xFFFFFFFF,
+		},
+		{
+			name:   "65535-13bit",
+			orig:   ShardKey32(0x0000FFFF),
+			offset: 11,
+			size:   13,
+			// maskBits = (0x0000FFFF >> 11) & 0x1FFF = 0x1F
+			wantShard: 0x1F00,
+			wantMSB:   0x0000,
+			wantLSB:   0x07FF,
+			// reversed(0x1F,13) = 0x1F00, so enc = 0x1F00<<19 | 0x07FF = 0xF80007FF
+			wantEnc: 0xF80007FF,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			// 1) raw‐field extractors on the original
+			require.Equalf(
+				t, tc.wantShard, tc.orig.Shard(tc.offset, tc.size),
+				"Shard(0x%08x, off=%d,size=%d)=0x%03x; want 0x%03x [%s]",
+				uint32(tc.orig), tc.offset, tc.size,
+				tc.orig.Shard(tc.offset, tc.size), tc.wantShard,
+				tc.name,
+			)
+			require.Equalf(
+				t, tc.wantMSB, tc.orig.MSBs(tc.offset, tc.size),
+				"MSBs(0x%08x, off=%d,size=%d)=0x%04x; want 0x%04x",
+				uint32(tc.orig), tc.offset, tc.size,
+				tc.orig.MSBs(tc.offset, tc.size), tc.wantMSB,
+			)
+			require.Equalf(
+				t, tc.wantLSB, tc.orig.LSBs(tc.offset, tc.size),
+				"LSBs(0x%08x, off=%d,size=%d)=0x%04x; want 0x%04x",
+				uint32(tc.orig), tc.offset, tc.size,
+				tc.orig.LSBs(tc.offset, tc.size), tc.wantLSB,
+			)
+
+			// 2) Encode
+			enc := tc.orig.Encode(tc.offset, tc.size)
+			require.Equalf(
+				t, tc.wantEnc, enc,
+				"Encode(0x%08x, off=%d,size=%d)=0x%08x; want 0x%08x",
+				uint32(tc.orig), tc.offset, tc.size,
+				enc, tc.wantEnc,
+			)
+
+			// 3) Decode back
+			dec := Decode(enc, tc.offset, tc.size)
+			require.Equalf(
+				t, tc.orig, dec,
+				"Decode(0x%08x, off=%d,size=%d)=0x%08x; want 0x%08x",
+				enc, tc.offset, tc.size,
+				uint32(dec), uint32(tc.orig),
+			)
+		})
+	}
+}
